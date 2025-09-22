@@ -11,6 +11,7 @@ const passwordInput = $("password");
 const loginForm = $("loginForm");
 const loginSubmitBtn = $("loginSubmitBtn");
 const messageContainer = $("messageContainer");
+const modalMessageContainer = $("modalMessageContainer");
 
 
 // Show message function
@@ -22,6 +23,17 @@ function showMessage(type, message) {
   // Auto-hide after 3 seconds
   setTimeout(() => {
     messageContainer.classList.add("d-none");
+  }, 3000);
+}
+
+// Show modal message function
+function showModalMessage(message) {
+  modalMessageContainer.textContent = message;
+  modalMessageContainer.classList.remove("d-none");
+  
+  // Auto-hide after 3 seconds
+  setTimeout(() => {
+    modalMessageContainer.classList.add("d-none");
   }, 3000);
 }
 
@@ -45,14 +57,51 @@ signupSubmitBtn.onclick = async () => {
   const password = $("signupPassword").value;
   const repassword = $("signupRepassword").value;
   
-  // Validate form
+  // Validate form fields (not empty)
   if (!firstname || !lastname || !email || !birthdate || !password) {
-    alert("Please fill in all required fields");
+    showModalMessage("Please fill in all required fields");
     return;
   }
   
+  // Validate email format using regex
+  const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+  if (!emailRegex.test(email)) {
+    showModalMessage("Please enter a valid email address");
+    return;
+  }
+
+  // Validate birthdate format using Date object
+  const birthDateObj = new Date(birthdate);
+  if (isNaN(birthDateObj.getTime())) {
+    // If birthdate is not a valid date, show error message
+    showModalMessage("Please enter a valid birthdate");
+    return;
+  }
+
+  // Calculate age
+  const today = new Date();
+  let age = today.getFullYear() - birthDateObj.getFullYear();
+  const monthDiff = today.getMonth() - birthDateObj.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDateObj.getDate())) {
+    age--;
+  }
+
+  // Check if user is at least 12 years old
+  if (age < 12) {
+    // If user is not at least 12 years old, show error message
+    showModalMessage("You must be at least 12 years old to sign up");
+    return;
+  }
+
+  // Validate password complexity: at least 8 chars, includes a letter, a number, and a symbol
+  const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+  if (!passwordRegex.test(password)) {
+    showModalMessage("Password must be at least 8 characters and include a letter, a number, and a symbol");
+    return;
+  }
+
   if (password !== repassword) {
-    showMessage("danger", "Passwords do not match");
+    showModalMessage("Passwords do not match");
     return;
   }
   
@@ -79,19 +128,15 @@ signupSubmitBtn.onclick = async () => {
       showMessage("success", "Registration successful! You can now log in.");
       signupForm.reset();
     } else {
-      showMessage("danger", data.message);
+      showModalMessage(data.message);
     }
   } catch (error) {
-    showMessage("danger", "An error occurred. Please try again.");
+    showModalMessage(`An error occurred: ${error.message}`);
   }
 };
 
 
 
-
-
-
-// Fix for login button - prevent form submission and handle redirection
 // Handle login
 loginForm.onsubmit = async (e) => {
   e.preventDefault();
@@ -116,7 +161,7 @@ loginForm.onsubmit = async (e) => {
     const data = await response.json();
 
     if (data.success) {
-      // Store user info (optional)
+      // Store user info in browser storage
       sessionStorage.setItem("user", JSON.stringify(data.user));
       
       // Redirect to home page
